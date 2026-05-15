@@ -1,0 +1,126 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v1.0.0)'
+        required: false
+        default: 'dev'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            suffix: .exe
+            ldflags: "-s -w -H windowsgui"
+            name: Any2Claude-windows-amd64.exe
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+            ldflags: "-s -w"
+            name: Any2Claude-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+            ldflags: "-s -w"
+            name: Any2Claude-darwin-arm64
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+            ldflags: "-s -w"
+            name: Any2Claude-linux-amd64
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+            ldflags: "-s -w"
+            name: Any2Claude-linux-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="${{ matrix.ldflags }}" -o ${{ matrix.name }} ./cmd/any2claude
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          # Flatten artifacts into release dir
+          for dir in artifacts/*/; do
+            cp "$dir"* release/ 2>/dev/null || true
+          done
+          # Add default config for reference
+          cp cmd/any2claude/embed/config.json release/config.json
+          ls -la release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Any2Claude ${{ github.ref_name }}
+          body: |
+            ## Any2Claude ${{ github.ref_name }}
+
+            Local reverse proxy for Claude Desktop to use third-party models.
+
+            ### Downloads
+
+            | Platform | File |
+            |----------|------|
+            | Windows x64 | `Any2Claude-windows-amd64.exe` |
+            | macOS Intel | `Any2Claude-darwin-amd64` |
+            | macOS Apple Silicon (M1/M2/M3/M4) | `Any2Claude-darwin-arm64` |
+            | Linux x64 | `Any2Claude-linux-amd64` |
+            | Linux ARM64 | `Any2Claude-linux-arm64` |
+
+            ### Quick Start
+
+            1. Download the binary for your platform
+            2. Run it (Windows: double-click; macOS/Linux: `chmod +x && ./Any2Claude`)
+            3. Open Dashboard: http://127.0.0.1:8090
+            4. Add your API provider and model mappings
+            5. Configure Claude Desktop: Settings → Developer → Configure Third-Party Inference → Gateway → `http://127.0.0.1:8089`
+
+            See [README](https://github.com/houht1013/Any2Claude/blob/main/README.md) for full documentation.
+          files: release/*
+          draft: false
+          prerelease: false
