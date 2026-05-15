@@ -2,6 +2,8 @@
 
 让 Claude Desktop 无缝使用第三方大模型（GLM-4、Qwen、DeepSeek、豆包等）的本地反向代理工具。
 
+> **📖 [图文使用指南（中文）](docs/GUIDE_CN.md)** | **[User Guide with Screenshots (English)](docs/GUIDE.md)**
+
 ```
 Claude Desktop                Any2Claude                    API 供应商
  claude-fast-v3  ──────>  localhost:8089  ──────>  api.opclab.vip

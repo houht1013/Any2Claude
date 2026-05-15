@@ -2,6 +2,8 @@
 
 Local reverse proxy that enables Claude Desktop to use third-party models (GLM-4, Qwen, DeepSeek, Doubao, etc.) by mapping custom model IDs to real upstream API endpoints.
 
+> **📖 [User Guide with Screenshots (English)](docs/GUIDE.md)** | **[图文使用指南（中文）](docs/GUIDE_CN.md)**
+
 ```
 Claude Desktop                Any2Claude                    API Provider
  claude-fast-v3  ──────>  localhost:8089  ──────>  api.opclab.vip
