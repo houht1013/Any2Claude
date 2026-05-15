@@ -1,0 +1,31 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Any2Claude tray logo</title>
+  <desc>Minimal tray icon for Any2Claude: multiple inputs routed through a compact connector into one API provider output.</desc>
+  <rect x="96" y="96" width="832" height="832" rx="232" fill="#0B0C0F"/>
+  <rect x="98" y="98" width="828" height="828" rx="230" stroke="url(#rim)" stroke-width="4"/>
+
+  <g stroke="#F7F7F2" stroke-width="58" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M250 356H389C452 356 503 407 503 470V554C503 617 554 668 617 668H774"/>
+    <path d="M250 512H389"/>
+    <path d="M250 668H389C452 668 503 617 503 554V470C503 407 554 356 617 356H774"/>
+  </g>
+
+  <g fill="#F7F7F2">
+    <circle cx="250" cy="356" r="34"/>
+    <circle cx="250" cy="512" r="34"/>
+    <circle cx="250" cy="668" r="34"/>
+    <circle cx="774" cy="356" r="34"/>
+    <circle cx="774" cy="668" r="34"/>
+  </g>
+
+  <circle cx="512" cy="512" r="82" fill="#0B0C0F" stroke="#D97757" stroke-width="44"/>
+  <path d="M467 513H557" stroke="#F7F7F2" stroke-width="42" stroke-linecap="round"/>
+
+  <defs>
+    <linearGradient id="rim" x1="180" y1="142" x2="844" y2="880" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F7F2" stop-opacity=".32"/>
+      <stop offset=".54" stop-color="#D97757" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#F7F7F2" stop-opacity=".08"/>
+    </linearGradient>
+  </defs>
+</svg>

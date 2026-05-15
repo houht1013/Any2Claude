@@ -1,0 +1,27 @@
+{
+  "listen": {
+    "host": "127.0.0.1",
+    "port": 8089
+  },
+  "providers": {
+    "opclab": {
+      "name": "OPC Lab",
+      "base_url": "https://api.opclab.vip",
+      "api_key": "sk-your-api-key-here",
+      "api_format": "openai",
+      "enabled": true
+    }
+  },
+  "models": [
+    {
+      "display_name": "claude-fast-v3",
+      "real_model": "glm-4",
+      "provider": "opclab",
+      "enabled": true
+    }
+  ],
+  "log_level": "info",
+  "debug_mode": false,
+  "auto_start": true,
+  "open_dashboard_on_start": false
+}

@@ -1,0 +1,35 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+/build/
+/dist/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.spec
+
+# Go build cache
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Downloaded archives
+*.zip
+
+# User config (contains API keys)
+# config.json in exe dir is user-specific; the embedded default is committed
