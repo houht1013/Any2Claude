@@ -121,9 +121,12 @@ func (ps *ProxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				log.Printf("[proxy] >> %s -> %s (via %s)", originalModel, resolved.RealModel, resolved.Provider.Name)
 				logBuf.Add("INFO", fmt.Sprintf("Model: %s -> %s (via %s)", originalModel, resolved.RealModel, resolved.Provider.Name))
 			} else {
-				targetProvider = ps.configMgr.GetFirstEnabledProvider()
-				log.Printf("[proxy] >> %s (passthrough, no mapping found)", originalModel)
-				logBuf.Add("WARN", fmt.Sprintf("Model %s has no mapping, using first provider", originalModel))
+				errMsg := fmt.Sprintf("Model \"%s\" is not configured in the model mapping table", originalModel)
+				log.Printf("[proxy] ERROR: %s", errMsg)
+				logBuf.Add("ERROR", errMsg)
+				writeAnthropicError(w, 400, "invalid_request_error", errMsg)
+				atomic.AddInt64(&statErrors, 1)
+				return
 			}
 
 			if s, ok := anthropicPayload["stream"].(bool); ok {
