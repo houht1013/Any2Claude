@@ -23,14 +23,29 @@ Claude Desktop                Any2Claude                    API 供应商
 
 ### 1. 编译
 
-安装 [Go](https://go.dev/dl/)（下载 .msi 安装），然后：
+安装 [Go](https://go.dev/dl/)（Windows 下载 .msi，macOS 下载 .pkg），然后：
 
+**Windows：**
 ```cmd
-cd D:\x2claude-proxy
-go build -ldflags="-s -w -H windowsgui" -o Any2Claude.exe .
+cd Any2Claude
+scripts\build.bat
+```
+或手动：`go build -ldflags="-s -w -H windowsgui" -o Any2Claude.exe ./cmd/any2claude`
+
+全平台交叉编译：`scripts\build.bat all`
+
+**macOS / Linux：**
+```bash
+cd Any2Claude
+chmod +x scripts/build.sh
+scripts/build.sh
+```
+或手动编译：
+```bash
+go build -ldflags="-s -w" -o Any2Claude ./cmd/any2claude
 ```
 
-或直接双击 `build.bat`。
+> macOS 也可以用 Homebrew 安装 Go：`brew install go`
 
 > 中国用户如遇网络问题，先设置 Go 代理：
 > ```cmd
@@ -39,11 +54,21 @@ go build -ldflags="-s -w -H windowsgui" -o Any2Claude.exe .
 
 ### 2. 运行
 
-双击 `Any2Claude.exe`，系统托盘出现图标。
+**Windows：** 双击 `Any2Claude.exe`，系统托盘出现图标。
 
 - **右键** 托盘图标 → 打开 Dashboard / 退出
 - **双击** 托盘图标 → 打开 Dashboard
-- Dashboard 地址：`http://127.0.0.1:8090`
+
+**macOS / Linux：** 在终端运行：
+```bash
+./Any2Claude
+```
+或后台运行：
+```bash
+nohup ./Any2Claude &
+```
+
+Dashboard 地址：`http://127.0.0.1:8090`
 
 ### 3. 配置供应商
 
@@ -199,25 +224,132 @@ http://127.0.0.1:8089
 ## 项目结构
 
 ```
-x2claude-proxy/
-├── main.go            # 入口 + 配置加载 + HTTP 服务 + 托盘启动
-├── proxy.go           # 反向代理核心 + Anthropic↔OpenAI 格式转换
-├── api.go             # Dashboard REST API + 日志缓冲
-├── config.go          # 线程安全的配置管理
-├── icon.go            # 托盘图标（embed assets/any2claude-tray-logo.ico）
-├── tray_windows.go    # Windows 系统托盘（纯 Win32 syscall，无 CGO）
-├── tray_other.go      # 非 Windows 平台 stub
-├── dashboard.html     # Web 管理面板（编译时 embed 进 exe）
-├── config.json        # 默认配置（编译时 embed 进 exe）
-├── assets/
-│   ├── any2claude-tray-logo.ico   # 托盘图标
-│   ├── any2claude-tray-logo.svg   # 矢量 Logo
-│   └── any2claude-tray-logo-*.png # 各尺寸 PNG
-├── go.mod             # Go 模块定义（零外部依赖）
-├── build.bat          # Windows 一键编译脚本
+Any2Claude/
+├── cmd/any2claude/            # Go 源码（package main）
+│   ├── main.go                #   入口 + CLI 参数 + HTTP 服务
+│   ├── proxy.go               #   反向代理 + Anthropic↔OpenAI 格式转换
+│   ├── api.go                 #   Dashboard REST API + 日志缓冲
+│   ├── config.go              #   线程安全的配置管理
+│   ├── icon.go                #   托盘图标加载
+│   ├── tray_windows.go        #   Windows 系统托盘（纯 Win32 syscall）
+│   ├── tray_other.go          #   非 Windows 平台 stub
+│   └── embed/                 #   编译时嵌入二进制的资源
+│       ├── dashboard.html     #     Web 管理面板
+│       ├── config.json        #     默认配置模板
+│       └── icon/
+│           └── any2claude-tray-logo.ico
+├── assets/                    # 源始素材（不编译进二进制）
+│   ├── any2claude-tray-logo.svg
+│   └── any2claude-tray-logo-*.png
+├── scripts/
+│   ├── build.bat              # Windows 编译（支持交叉编译）
+│   └── build.sh               # macOS/Linux 编译
+├── deploy/
+│   ├── install.sh             # Linux 服务器安装（systemd）
+│   └── any2claude.service     # systemd 服务文件
+├── go.mod                     # Go 模块定义（零外部依赖）
+├── Dockerfile
+├── docker-compose.yml
+├── .gitignore
+├── README.md
+└── README_CN.md
 ├── README.md          # English documentation
 └── README_CN.md       # 中文文档
 ```
+
+## Linux 服务器部署
+
+Any2Claude 可以部署在 Linux 服务器上作为服务运行，让多个用户的 Claude Desktop 远程连接。
+
+### 方案 A：systemd（推荐）
+
+```bash
+# 克隆并安装
+git clone https://github.com/houht1013/Any2Claude.git
+cd Any2Claude
+sudo chmod +x deploy/install.sh
+sudo ./deploy/install.sh
+```
+
+安装脚本会自动：
+- 用 Go 编译二进制
+- 安装到 `/opt/any2claude/`
+- 创建 `any2claude` 系统用户
+- 安装并启动 systemd 服务
+
+**安装后操作：**
+```bash
+# 编辑配置（填入你的 API Key！）
+sudo nano /opt/any2claude/config.json
+sudo systemctl restart any2claude
+
+# 管理服务
+systemctl status any2claude        # 查看状态
+journalctl -u any2claude -f        # 查看实时日志
+sudo systemctl restart any2claude  # 重启
+sudo systemctl stop any2claude     # 停止
+
+# 卸载
+sudo ./deploy/install.sh --uninstall
+```
+
+### 方案 B：Docker
+
+```bash
+git clone https://github.com/houht1013/Any2Claude.git
+cd Any2Claude
+
+# 先编辑 config.json，填入你的 API Key
+nano config.json
+
+# 构建并运行
+docker compose up -d
+
+# 查看日志
+docker compose logs -f
+
+# 停止
+docker compose down
+```
+
+### 方案 C：手动运行
+
+```bash
+# 编译
+go build -ldflags="-s -w" -o Any2Claude ./cmd/any2claude
+
+# 运行（监听所有网卡）
+./Any2Claude -host 0.0.0.0 -port 8089
+
+# 后台运行
+nohup ./Any2Claude -host 0.0.0.0 -port 8089 > /var/log/any2claude.log 2>&1 &
+```
+
+### 命令行参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `-host` | 来自 config | 监听地址（`0.0.0.0` 监听所有网卡） |
+| `-port` | 来自 config | 代理端口（Dashboard = port+1） |
+| `-config` | 自动检测 | config.json 路径 |
+
+### 防火墙
+
+```bash
+# 放通代理和 Dashboard 端口
+sudo ufw allow 8089/tcp    # 代理
+sudo ufw allow 8090/tcp    # Dashboard（生产环境建议限制访问）
+```
+
+### Claude Desktop 连接远程服务器
+
+在 Claude Desktop 中：**Settings → Developer → Configure Third-Party Inference → Gateway**
+
+```
+http://<你的服务器 IP>:8089
+```
+
+> **安全提示：** 生产环境建议在 Any2Claude 前面加 nginx/Caddy 反向代理，配置 HTTPS 和认证。
 
 ## 端口说明
 

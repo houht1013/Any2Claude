@@ -4,7 +4,7 @@ import (
 	_ "embed"
 )
 
-//go:embed assets/any2claude-tray-logo.ico
+//go:embed embed/icon/any2claude-tray-logo.ico
 var embeddedICO []byte
 
 // buildIcon returns the embedded ICO file data.

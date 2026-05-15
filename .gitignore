@@ -1,4 +1,6 @@
 # Binaries
+/Any2Claude
+/Any2Claude-*
 *.exe
 *.exe~
 *.dll

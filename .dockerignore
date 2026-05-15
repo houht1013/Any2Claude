@@ -1,0 +1,10 @@
+*.exe
+*.exe~
+Any2Claude
+.git
+.gitignore
+*.md
+deploy/
+*.zip
+.DS_Store
+Thumbs.db

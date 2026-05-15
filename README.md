@@ -23,22 +23,47 @@ Claude Desktop                Any2Claude                    API Provider
 
 ### 1. Build
 
-Install [Go](https://go.dev/dl/) (download .msi for Windows), then:
+Install [Go](https://go.dev/dl/) (download .msi for Windows, .pkg for macOS), then:
 
+**Windows:**
 ```cmd
-cd D:\x2claude-proxy
-go build -ldflags="-s -w -H windowsgui" -o Any2Claude.exe .
+cd Any2Claude
+scripts\build.bat
+```
+Or manually: `go build -ldflags="-s -w -H windowsgui" -o Any2Claude.exe ./cmd/any2claude`
+
+Cross-compile all platforms: `scripts\build.bat all`
+
+**macOS / Linux:**
+```bash
+cd Any2Claude
+chmod +x scripts/build.sh
+scripts/build.sh
+```
+Or manually:
+```bash
+go build -ldflags="-s -w" -o Any2Claude ./cmd/any2claude
 ```
 
-Or simply double-click `build.bat`.
+> macOS users can also install Go via Homebrew: `brew install go`
 
 ### 2. Run
 
-Double-click `Any2Claude.exe`. A tray icon appears in the system tray.
+**Windows:** Double-click `Any2Claude.exe`. A tray icon appears in the system tray.
 
 - **Right-click** tray icon → Open Dashboard / Quit
 - **Double-click** tray icon → Open Dashboard
-- Dashboard runs at `http://127.0.0.1:8090`
+
+**macOS / Linux:** Run from terminal:
+```bash
+./Any2Claude
+```
+Or run in background:
+```bash
+nohup ./Any2Claude &
+```
+
+Dashboard runs at `http://127.0.0.1:8090`
 
 ### 3. Configure Providers
 
@@ -194,24 +219,130 @@ All debug logs appear in Dashboard → **Logs** tab with auto-scroll.
 ## Project Structure
 
 ```
-x2claude-proxy/
-├── main.go            # Entry point, config loading, HTTP servers, tray launcher
-├── proxy.go           # Reverse proxy core + Anthropic↔OpenAI format translation
-├── api.go             # Dashboard REST API + log buffer
-├── config.go          # Thread-safe config management
-├── icon.go            # Tray icon (embeds assets/any2claude-tray-logo.ico)
-├── tray_windows.go    # Windows system tray (pure Win32 syscall, no CGO)
-├── tray_other.go      # Non-Windows stub
-├── dashboard.html     # Web Dashboard (embedded into exe)
-├── config.json        # Default config (embedded into exe)
-├── assets/
-│   ├── any2claude-tray-logo.ico   # Tray icon
-│   ├── any2claude-tray-logo.svg   # Vector logo
-│   └── any2claude-tray-logo-*.png # PNG variants
-├── go.mod             # Go module (zero external dependencies)
-├── build.bat          # Windows one-click build script
-└── README.md
+Any2Claude/
+├── cmd/any2claude/            # Go source (package main)
+│   ├── main.go                #   Entry point, CLI flags, HTTP servers
+│   ├── proxy.go               #   Reverse proxy + Anthropic↔OpenAI translation
+│   ├── api.go                 #   Dashboard REST API + log buffer
+│   ├── config.go              #   Thread-safe config management
+│   ├── icon.go                #   Tray icon loader
+│   ├── tray_windows.go        #   Windows system tray (pure Win32 syscall)
+│   ├── tray_other.go          #   Non-Windows stub (macOS/Linux)
+│   └── embed/                 #   Assets compiled into binary
+│       ├── dashboard.html     #     Web Dashboard UI
+│       ├── config.json        #     Default config template
+│       └── icon/
+│           └── any2claude-tray-logo.ico
+├── assets/                    # Source artwork (not compiled in)
+│   ├── any2claude-tray-logo.svg
+│   └── any2claude-tray-logo-*.png
+├── scripts/
+│   ├── build.bat              # Windows build (supports cross-compile)
+│   └── build.sh               # macOS/Linux build
+├── deploy/
+│   ├── install.sh             # Linux server install (systemd)
+│   └── any2claude.service     # systemd unit file
+├── go.mod                     # Go module (zero external dependencies)
+├── Dockerfile
+├── docker-compose.yml
+├── .gitignore
+├── README.md
+└── README_CN.md
 ```
+
+## Linux Server Deployment
+
+Any2Claude can run as a service on a Linux server, allowing multiple users' Claude Desktop clients to connect remotely.
+
+### Option A: systemd (recommended)
+
+```bash
+# Clone and install
+git clone https://github.com/houht1013/Any2Claude.git
+cd Any2Claude
+sudo chmod +x deploy/install.sh
+sudo ./deploy/install.sh
+```
+
+This will:
+- Build the binary with Go
+- Install to `/opt/any2claude/`
+- Create a `any2claude` system user
+- Install and start a systemd service
+
+**Post-install:**
+```bash
+# Edit config (set your API keys!)
+sudo nano /opt/any2claude/config.json
+sudo systemctl restart any2claude
+
+# Manage service
+systemctl status any2claude       # Check status
+journalctl -u any2claude -f       # Follow logs
+sudo systemctl restart any2claude # Restart
+sudo systemctl stop any2claude    # Stop
+
+# Uninstall
+sudo ./deploy/install.sh --uninstall
+```
+
+### Option B: Docker
+
+```bash
+git clone https://github.com/houht1013/Any2Claude.git
+cd Any2Claude
+
+# Edit config.json with your API keys first
+nano config.json
+
+# Build and run
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop
+docker compose down
+```
+
+### Option C: Manual
+
+```bash
+# Build
+go build -ldflags="-s -w" -o Any2Claude ./cmd/any2claude
+
+# Run (listen on all interfaces)
+./Any2Claude -host 0.0.0.0 -port 8089
+
+# Or run in background
+nohup ./Any2Claude -host 0.0.0.0 -port 8089 > /var/log/any2claude.log 2>&1 &
+```
+
+### CLI Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-host` | from config | Listen address (`0.0.0.0` for all interfaces) |
+| `-port` | from config | Proxy port (dashboard = port+1) |
+| `-config` | auto-detect | Path to config.json |
+
+### Firewall
+
+```bash
+# Allow proxy and dashboard ports
+sudo ufw allow 8089/tcp    # Proxy
+sudo ufw allow 8090/tcp    # Dashboard (optional, restrict in production)
+```
+
+### Claude Desktop → Remote Server
+
+In Claude Desktop: **Settings → Developer → Configure Third-Party Inference → Gateway**
+
+```
+http://<your-server-ip>:8089
+```
+
+> **Security tip:** In production, use a reverse proxy (nginx/Caddy) with HTTPS and authentication in front of Any2Claude.
 
 ## Technical Notes
 

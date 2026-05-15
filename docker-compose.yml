@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  any2claude:
+    build: .
+    container_name: any2claude
+    ports:
+      - "8089:8089"   # Proxy (Claude Desktop connects here)
+      - "8090:8090"   # Dashboard (Web UI)
+    volumes:
+      - ./config.json:/app/config.json   # Persist config
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped

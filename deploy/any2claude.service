@@ -1,0 +1,24 @@
+[Unit]
+Description=Any2Claude - Proxy for Claude Desktop to use third-party models
+After=network.target
+
+[Service]
+Type=simple
+User=any2claude
+Group=any2claude
+WorkingDirectory=/opt/any2claude
+ExecStart=/opt/any2claude/Any2Claude -host 0.0.0.0 -port 8089
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/any2claude
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,10 +15,10 @@ import (
 	"time"
 )
 
-//go:embed dashboard.html
+//go:embed embed/dashboard.html
 var dashboardFS embed.FS
 
-//go:embed config.json
+//go:embed embed/config.json
 var defaultConfigFS embed.FS
 
 const (
@@ -67,7 +68,7 @@ func getConfigPath() string {
 
 	// 首次运行：从 embed 写入默认配置
 	if _, err := os.Stat(userCfg); os.IsNotExist(err) {
-		defaultCfg, err := defaultConfigFS.ReadFile("config.json")
+		defaultCfg, err := defaultConfigFS.ReadFile("embed/config.json")
 		if err == nil {
 			os.WriteFile(userCfg, defaultCfg, 0644)
 		}
@@ -94,20 +95,39 @@ func openBrowser(url string) {
 // ---------------------------------------------------------------------------
 
 func main() {
+	// CLI flags
+	flagHost := flag.String("host", "", "Listen address (overrides config, e.g. 0.0.0.0)")
+	flagPort := flag.Int("port", 0, "Proxy port (overrides config, dashboard = port+1)")
+	flagConfig := flag.String("config", "", "Path to config.json")
+	flag.Parse()
+
 	// Load config
-	configPath := getConfigPath()
+	var configPath string
+	if *flagConfig != "" {
+		configPath = *flagConfig
+	} else {
+		configPath = getConfigPath()
+	}
 	cfgMgr := NewConfigManager(configPath)
 	cfg := cfgMgr.Get()
 
+	// CLI overrides
+	listenHost := cfg.Listen.Host
 	proxyPort := cfg.Listen.Port
+	if *flagHost != "" {
+		listenHost = *flagHost
+	}
+	if *flagPort > 0 {
+		proxyPort = *flagPort
+	}
 	dashPort := proxyPort + 1
 
 	statStartTime = time.Now()
 
 	log.Printf("[main] %s v%s", appName, version)
 	log.Printf("[main] Config: %s", configPath)
-	log.Printf("[main] Proxy:  http://127.0.0.1:%d", proxyPort)
-	log.Printf("[main] Dashboard: http://127.0.0.1:%d", dashPort)
+	log.Printf("[main] Proxy:  http://%s:%d", listenHost, proxyPort)
+	log.Printf("[main] Dashboard: http://%s:%d", listenHost, dashPort)
 
 	// Log model mappings
 	modelMap := cfgMgr.BuildModelMap()
@@ -118,7 +138,7 @@ func main() {
 	}
 
 	// Load dashboard HTML
-	dashHTML, err := dashboardFS.ReadFile("dashboard.html")
+	dashHTML, err := dashboardFS.ReadFile("embed/dashboard.html")
 	if err != nil {
 		log.Printf("[main] WARNING: dashboard.html not embedded: %v", err)
 		dashHTML = []byte("<html><body><h1>Dashboard not available</h1></body></html>")
@@ -127,7 +147,7 @@ func main() {
 	// Start proxy server
 	proxyServer := NewProxyServer(cfgMgr)
 	go func() {
-		addr := fmt.Sprintf("%s:%d", cfg.Listen.Host, proxyPort)
+		addr := fmt.Sprintf("%s:%d", listenHost, proxyPort)
 		log.Printf("[proxy] Listening on %s", addr)
 		logBuf.Add("INFO", fmt.Sprintf("Proxy listening on %s", addr))
 		if err := http.ListenAndServe(addr, proxyServer); err != nil {
@@ -138,7 +158,7 @@ func main() {
 	// Start dashboard server
 	dashServer := NewDashboardServer(cfgMgr, string(dashHTML))
 	go func() {
-		addr := fmt.Sprintf("%s:%d", cfg.Listen.Host, dashPort)
+		addr := fmt.Sprintf("%s:%d", listenHost, dashPort)
 		log.Printf("[dashboard] Listening on %s", addr)
 		logBuf.Add("INFO", fmt.Sprintf("Dashboard listening on %s", addr))
 		if err := http.ListenAndServe(addr, dashServer); err != nil {
